@@ -79,13 +79,36 @@ export function useTodo() {
     }, [connection, anchorWallet])
 
     useEffect(() => {
+        const findProfileAccounts = async () => {
+            if (program && publicKey && !transactionPending) {
+                try {
+                    setLoading(true);
+                    const [profilePda, profileBump] = 
+                    await findProgramAddressSync([utf8.encode('USER_STATE'), publicKey.toBuffer()], program.programId);
+                    const profileAccount = await program.account.userProfile.fetch(profilePda);
 
-        if(initialized) {
-            setTodos(dummyTodos)
+                    if (profileAccount) {
+                        setLastTodo(profileAccount.lastTodo)
+                        setInitialized(true)
+
+                        const todoAccounts = await program.account.todoAccount.all([authorFilter(publicKey.toString())])
+                        setTodos(todoAccounts)
+                    }else {
+                        setInitialized(false)
+                        console.log("not initialized");
+                    }
+                } catch (error) {
+                    console.log(error);
+                    setInitialized(false);
+                    setTodos([])
+                } finally {
+                    setLoading(false)
+                }
+            }
         }
 
-
-    }, [initialized])
+        findProfileAccounts()
+    }, [publicKey, program, transactionPending])
 
     const handleChange = (e)=> {
         setInput(e.target.value)
